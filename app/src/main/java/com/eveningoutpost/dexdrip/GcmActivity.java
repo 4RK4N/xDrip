@@ -21,6 +21,7 @@ import com.eveningoutpost.dexdrip.Models.BloodTest;
 import com.eveningoutpost.dexdrip.Models.Calibration;
 import com.eveningoutpost.dexdrip.Models.DesertSync;
 import com.eveningoutpost.dexdrip.Models.JoH;
+import com.eveningoutpost.dexdrip.Models.NSBasal;
 import com.eveningoutpost.dexdrip.Models.RollCall;
 import com.eveningoutpost.dexdrip.Models.Sensor;
 import com.eveningoutpost.dexdrip.Models.Treatments;
@@ -507,10 +508,10 @@ public class GcmActivity extends FauxActivity {
         }
     }
 
-    public static void sendNanoStatusUpdate(final String prefix, final String json) {
-        if (JoH.pratelimit("gcm-nscu" + prefix, 30)) {
-            UserError.Log.d(TAG, "Sending nano status update: " + prefix + " " + json);
-            sendMessage("nscu" + prefix, json);
+    public static void sendNanoStatusUpdate(final String json) {
+        if (JoH.pratelimit("gcm-nscu", 180)) {
+            UserError.Log.d(TAG, "Sending nano status update: " + json);
+            sendMessage("nscu", json);
         }
     }
 
@@ -688,18 +689,23 @@ public class GcmActivity extends FauxActivity {
             GcmActivity.sendMessage(myIdentity(), "cal2", json);
         }
     }
-    public static void pushLibreBlock(String libreBlock) {
-        Log.i(TAG, "libreBlock called: " + libreBlock);
+    
+    public static void pushNsBasal(NSBasal nsBasal) {
+        Log.i(TAG, "pushNsBasal called: " + nsBasal.toS());
         if (!Home.get_master()) {
             return;
         }
-        if (!JoH.pratelimit("libre-allhouse", 5)) {
-            // Do not create storm of packets.
-            Log.e(TAG, "Rate limited start libre-allhouse");
+
+        final String json = nsBasal.toJson();
+        GcmActivity.sendMessage(myIdentity(), "nsBasal", json);
+    }
+    
+    public static void pushNsStatus(String oapsStatusJson) {
+        Log.i(TAG, "pushNsStatus called: " + oapsStatusJson);
+        if (!Home.get_master()) {
             return;
         }
-
-        GcmActivity.sendMessage(myIdentity(), "libreBlock", libreBlock);
+        GcmActivity.sendMessage(myIdentity(), "oapsStatus", oapsStatusJson);
     }
 
     public static void clearLastCalibration(String uuid) {

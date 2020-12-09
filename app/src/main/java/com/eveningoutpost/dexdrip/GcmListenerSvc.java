@@ -1,7 +1,5 @@
 package com.eveningoutpost.dexdrip;
 
-import android.R.integer;
-
 /**
  * Created by jamorham on 11/01/16.
  */
@@ -23,10 +21,9 @@ import com.eveningoutpost.dexdrip.Models.BloodTest;
 import com.eveningoutpost.dexdrip.Models.Calibration;
 import com.eveningoutpost.dexdrip.Models.DesertSync;
 import com.eveningoutpost.dexdrip.Models.JoH;
-import com.eveningoutpost.dexdrip.Models.LibreBlock;
+import com.eveningoutpost.dexdrip.Models.NSBasal;
 import com.eveningoutpost.dexdrip.Models.RollCall;
 import com.eveningoutpost.dexdrip.Models.Sensor;
-import com.eveningoutpost.dexdrip.Models.SensorSanity;
 import com.eveningoutpost.dexdrip.Models.TransmitterData;
 import com.eveningoutpost.dexdrip.Models.Treatments;
 import com.eveningoutpost.dexdrip.Models.UserError;
@@ -35,7 +32,7 @@ import com.eveningoutpost.dexdrip.Services.ActivityRecognizedService;
 import com.eveningoutpost.dexdrip.UtilityModels.AlertPlayer;
 import com.eveningoutpost.dexdrip.UtilityModels.Constants;
 import com.eveningoutpost.dexdrip.UtilityModels.NanoStatus;
-import com.eveningoutpost.dexdrip.UtilityModels.PersistentStore;
+import com.eveningoutpost.dexdrip.UtilityModels.NightscoutStatus;
 import com.eveningoutpost.dexdrip.UtilityModels.Pref;
 import com.eveningoutpost.dexdrip.UtilityModels.PumpStatus;
 import com.eveningoutpost.dexdrip.UtilityModels.StatusItem;
@@ -377,10 +374,10 @@ public class GcmListenerSvc extends JamListenerSvc {
                         Log.i(TAG, "Received pump status update");
                         PumpStatus.fromJson(payload);
                     }
-                } else if (action.startsWith("nscu")) {
+                } else if (action.equals("nscu")) {
                     if (Home.get_follower()) {
-                        Log.i(TAG, "Received nanostatus update: " + action);
-                        NanoStatus.setRemote(action.replaceAll("^nscu", ""), payload);
+                        Log.i(TAG,"Received nanostatus update");
+                        NanoStatus.setRemote(payload);
                     }
                 } else if (action.equals("not")) {
                     if (Home.get_follower()) {
@@ -557,8 +554,16 @@ public class GcmListenerSvc extends JamListenerSvc {
                             UserError.Log.wtf(TAG, "Exception processing rsom timestamp");
                         }
                     }
-                } else if (action.equals("libreBlock")) {
-                    HandleLibreBlock(payload);
+                } else if (action.equals("nsBasal")) {
+                    if (Home.get_follower()) {
+                        Log.i(TAG, "Received ns basal update");
+                        NSBasal.addFromJson(payload);
+                    }
+                } else if (action.equals("oapsStatus")) {
+                    if (Home.get_follower()) {
+                        Log.i(TAG, "Received oapsStatus update");
+                        NightscoutStatus.addFromJson(payload);
+                    }
                 } else {
                     Log.e(TAG, "Received message action we don't know about: " + action);
                 }
@@ -571,27 +576,6 @@ public class GcmListenerSvc extends JamListenerSvc {
         }
     }
 
-    private void HandleLibreBlock(String payload) {
-        LibreBlock lb = LibreBlock.createFromExtendedJson(payload);
-        if(lb == null) {
-            return;
-        }
-        if (LibreBlock.getForTimestamp(lb.timestamp) != null) {
-            // We already seen this one.
-            return;
-        }
-        LibreBlock.Save(lb);
-        
-        PersistentStore.setString("LibreSN", lb.reference);
-        
-        if(Home.get_master()) {
-            if (SensorSanity.checkLibreSensorChangeIfEnabled(lb.reference)) {
-                Log.e(TAG, "Problem with Libre Serial Number - not processing");
-            }
-            
-            NFCReaderX.HandleGoodReading(lb.reference, lb.blockbytes, lb.timestamp, false, lb.patchUid,  lb.patchInfo);
-        }
-    }
 
     private void sendNotification(String body, String title) {
         Intent intent = new Intent(this, Home.class);
