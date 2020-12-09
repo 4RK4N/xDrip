@@ -508,10 +508,10 @@ public class GcmActivity extends FauxActivity {
         }
     }
 
-    public static void sendNanoStatusUpdate(final String json) {
-        if (JoH.pratelimit("gcm-nscu", 180)) {
-            UserError.Log.d(TAG, "Sending nano status update: " + json);
-            sendMessage("nscu", json);
+    public static void sendNanoStatusUpdate(final String prefix, final String json) {
+        if (JoH.pratelimit("gcm-nscu" + prefix, 30)) {
+            UserError.Log.d(TAG, "Sending nano status update: " + prefix + " " + json);
+            sendMessage("nscu" + prefix, json);
         }
     }
 
@@ -688,6 +688,20 @@ public class GcmActivity extends FauxActivity {
             final String json = newCalibrationToJson(bgValue, uuid, offset);
             GcmActivity.sendMessage(myIdentity(), "cal2", json);
         }
+    }
+
+    public static void pushLibreBlock(String libreBlock) {
+        Log.i(TAG, "libreBlock called: " + libreBlock);
+        if (!Home.get_master()) {
+            return;
+        }
+        if (!JoH.pratelimit("libre-allhouse", 5)) {
+            // Do not create storm of packets.
+            Log.e(TAG, "Rate limited start libre-allhouse");
+            return;
+        }
+
+        GcmActivity.sendMessage(myIdentity(), "libreBlock", libreBlock);
     }
     
     public static void pushNsBasal(NSBasal nsBasal) {
